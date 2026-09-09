@@ -56,6 +56,7 @@ use vmm::resources::{
 };
 #[cfg(feature = "blk")]
 use vmm::vmm_config::block::{BlockDeviceConfig, BlockRootConfig};
+use vmm::vmm_config::crash_memaction::CrashMemactionConfig;
 #[cfg(not(feature = "tee"))]
 use vmm::vmm_config::external_kernel::{ExternalKernel, KernelFormat};
 #[cfg(not(feature = "tee"))]
@@ -1940,6 +1941,23 @@ pub unsafe extern "C" fn krun_set_nested_virt(ctx_id: u32, enabled: bool) -> i32
         Entry::Occupied(mut ctx_cfg) => {
             let cfg = ctx_cfg.get_mut();
             cfg.vmr.nested_enabled = enabled;
+            KRUN_SUCCESS
+        }
+        Entry::Vacant(_) => -libc::ENOENT,
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn krun_set_crash_memaction(ctx_id: u32, types: u32) -> i32 {
+    let Some(config) = CrashMemactionConfig::new(types) else {
+        return -libc::EINVAL;
+    };
+
+    match CTX_MAP.lock().unwrap().entry(ctx_id) {
+        Entry::Occupied(mut ctx_cfg) => {
+            let cfg = ctx_cfg.get_mut();
+            cfg.vmr.crash_memaction = config;
             KRUN_SUCCESS
         }
         Entry::Vacant(_) => -libc::ENOENT,

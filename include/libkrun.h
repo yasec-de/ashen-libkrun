@@ -1039,6 +1039,46 @@ int32_t krun_set_nested_virt(uint32_t ctx_id, bool enabled);
  */
 int32_t krun_check_nested_virt(void);
 
+/* Memory types for krun_set_crash_memaction() */
+
+/* The pages hold secrets. */
+#define KRUN_CRASH_MEMACTION_SECRET (1 << 0)
+/* The pages hold nothing worth dumping. */
+#define KRUN_CRASH_MEMACTION_CACHE  (1 << 1)
+
+/**
+ * Tells the host's kdump kernel what this microVM's guest RAM holds, so that it
+ * can act on it if the host panics.
+ *
+ * A guest's memory is not the host's to hand to whoever ends up with the host's
+ * vmcore, but it is also by far the largest thing in that dump. This describes
+ * the whole of guest RAM as holding the requested types, using madvise(2)
+ * MADV_CRASH_SECRET / MADV_CRASH_CACHE. What the kdump kernel then does about
+ * it is its own policy.
+ *
+ * It requires a host kernel built with CONFIG_CRASH_MEMACTION and booted with a
+ * "crash_memaction=" parameter naming the types asked for here; a type the host
+ * does not track is dropped rather than refused, so on any other host this call
+ * still succeeds and changes nothing. /sys/kernel/crash_memaction lists what
+ * the host tracks.
+ *
+ * Nothing is pinned and nothing is populated: the marks live in the VMA flags,
+ * so pages faulted in later are covered as they arrive, and a VM configured
+ * with 64 GiB of RAM still commits only what its guest touches.
+ *
+ * This function should be called before "krun_start_enter".
+ *
+ * Arguments:
+ *  "ctx_id" - the configuration context ID.
+ *  "types"  - a bitmask of KRUN_CRASH_MEMACTION_*. Zero describes nothing.
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ *  -EINVAL - "types" contains a bit this build does not know about.
+ *  -ENOENT - no such context.
+ */
+int32_t krun_set_crash_memaction(uint32_t ctx_id, uint32_t types);
+
 /* Feature constants for krun_has_feature() */
 #define KRUN_FEATURE_NET 0
 #define KRUN_FEATURE_BLK 1

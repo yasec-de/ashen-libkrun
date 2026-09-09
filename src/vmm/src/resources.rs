@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "blk")]
 use crate::vmm_config::block::{BlockBuilder, BlockConfigError, BlockDeviceConfig};
+use crate::vmm_config::crash_memaction::CrashMemactionConfig;
 use crate::vmm_config::external_kernel::ExternalKernel;
 use crate::vmm_config::firmware::FirmwareConfig;
 #[cfg(feature = "tdx")]
@@ -241,6 +242,8 @@ pub struct VmResources {
     pub virtio_consoles: Vec<VirtioConsoleConfigMode>,
     /// Enable the embedded dhcp client in init.c
     pub dhcp_client: bool,
+    /// What the host's kdump kernel should do with this microVM's guest RAM.
+    pub crash_memaction: CrashMemactionConfig,
 }
 
 impl VmResources {
@@ -480,6 +483,7 @@ mod tests {
             virtio_consoles: Vec::new(),
             kernel_console: None,
             dhcp_client: false,
+            crash_memaction: Default::default(),
         }
     }
 

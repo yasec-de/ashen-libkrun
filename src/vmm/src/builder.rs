@@ -77,6 +77,7 @@ use crate::signal_handler::register_sigwinch_handler;
 use crate::terminal::{term_restore_mode, term_set_raw_mode};
 #[cfg(feature = "blk")]
 use crate::vmm_config::block::BlockBuilder;
+use crate::vmm_config::crash_memaction::CrashMemactionConfig;
 #[cfg(feature = "tdx")]
 use crate::vmm_config::firmware::TeeFirmwareType;
 #[cfg(not(any(feature = "tee", feature = "aws-nitro")))]
@@ -1799,6 +1800,43 @@ pub struct PayloadConfig {
     pvh: bool,
 }
 
+/// Tell the host's kdump kernel what every region of this microVM's guest RAM
+/// holds.
+///
+/// The whole of `GuestMemoryMmap` is covered, which on top of the plain RAM
+/// regions includes the virtio SHM windows, since those are guest-addressable
+/// memory too. Regions the guest cannot see -- the host page cache a virtiofs
+/// DAX window later maps in, for instance -- are not ours to describe and are
+/// not described: a file mapping placed over part of a region afterwards
+/// carries its own VMA and so drops the mark for that sub-range.
+///
+/// Marking costs one `madvise()` per region and commits no memory. A host
+/// kernel that does not track the type we ask for drops the request silently,
+/// so the only failures left are a mapping the kernel will not describe and a
+/// kernel that has never heard of the operation. Neither is worth refusing to
+/// boot over.
+fn mark_guest_memory_for_crash(guest_mem: &GuestMemoryMmap, config: &CrashMemactionConfig) {
+    if config.is_empty() {
+        return;
+    }
+
+    let mut marked = 0u64;
+    for region in guest_mem.iter() {
+        // SAFETY: the pointer and length come straight from the region we just
+        // mapped, so they describe a live anonymous or memfd mapping owned by
+        // us.
+        match unsafe { config.mark_range(region.as_ptr(), region.size()) } {
+            Ok(()) => marked += region.size() as u64,
+            Err(e) => warn!("Cannot describe guest memory to the host's kdump kernel: {e}"),
+        }
+    }
+
+    info!(
+        "Described {} MiB of guest memory to the host's kdump kernel",
+        marked >> 20
+    );
+}
+
 pub fn create_guest_memory(
     mem_size: usize,
     vm_resources: &VmResources,
@@ -1959,6 +1997,11 @@ pub fn create_guest_memory(
         GuestMemoryMmap::from_ranges(&arch_mem_regions)
             .map_err(|e| StartMicrovmError::GuestMemoryMmap(format!("{e:?}")))?
     };
+
+    // Describe the guest's RAM before anything is loaded into it and before any
+    // vCPU runs, so there is no window in which the guest owns memory the
+    // host's kdump kernel knows nothing about.
+    mark_guest_memory_for_crash(&guest_mem, &vm_resources.crash_memaction);
 
     let LoadedPayload {
         guest_mem,

@@ -5,6 +5,9 @@
 #[cfg(feature = "blk")]
 pub mod block;
 
+/// Wrapper for configuring what the host's kdump kernel does with guest RAM.
+pub mod crash_memaction;
+
 /// Wrapper for configuring the firmware.
 pub mod firmware;
 
