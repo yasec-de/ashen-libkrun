@@ -118,8 +118,17 @@ struct Common {
     kernel_cmdline: Option<String>,
 
     /// Give the guest network access via libkrun's TSI vsock.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, conflicts_with = "tap")]
     net: bool,
+
+    /// Give the guest a virtio-net NIC on this existing host tap device
+    /// instead of TSI, e.g. one enslaved to a bridge on the LAN.
+    #[arg(long, global = true)]
+    tap: Option<String>,
+
+    /// MAC address of the --tap NIC (aa:bb:cc:dd:ee:ff).
+    #[arg(long, global = true, default_value = "02:a5:4e:00:00:01", value_parser = parse_mac)]
+    mac: [u8; 6],
 
     /// Read the crash marks back out of /proc/self/smaps once the VM is up.
     #[arg(long, global = true)]
@@ -443,6 +452,9 @@ fn main() -> Result<()> {
     if common.net {
         ctx.add_vsock(krun::KRUN_TSI_HIJACK_INET | krun::KRUN_TSI_HIJACK_UNIX)?;
     }
+    if let Some(tap) = &common.tap {
+        ctx.add_net_tap(tap, &common.mac)?;
+    }
 
     // Hand the workload to libkrun's guest init: the init binary and a
     // /.krun_config.json describing the process are injected into the root
@@ -527,4 +539,16 @@ mod tests {
             "secret+cache"
         );
     }
+}
+
+fn parse_mac(s: &str) -> std::result::Result<[u8; 6], String> {
+    let mut mac = [0u8; 6];
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 6 {
+        return Err(format!("expected six colon-separated bytes, got {s:?}"));
+    }
+    for (b, p) in mac.iter_mut().zip(parts) {
+        *b = u8::from_str_radix(p, 16).map_err(|e| format!("{p:?}: {e}"))?;
+    }
+    Ok(mac)
 }

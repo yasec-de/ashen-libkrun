@@ -37,6 +37,10 @@ pub const KRUN_KERNEL_FORMAT_IMAGE_ZSTD: u32 = 5;
 pub const KRUN_TSI_HIJACK_INET: u32 = 1 << 0;
 pub const KRUN_TSI_HIJACK_UNIX: u32 = 1 << 1;
 
+pub const NET_FLAG_DHCP_CLIENT: u32 = 1 << 1;
+pub const COMPAT_NET_FEATURES: u32 =
+    (1 << 0) | (1 << 1) | (1 << 7) | (1 << 10) | (1 << 11) | (1 << 14);
+
 unsafe extern "C" {
     fn krun_init_log(target_fd: c_int, level: u32, style: u32, options: u32) -> i32;
     fn krun_create_ctx() -> i32;
@@ -63,6 +67,13 @@ unsafe extern "C" {
         cmdline: *const c_char,
     ) -> i32;
     fn krun_add_vsock(ctx_id: u32, tsi_features: u32) -> i32;
+    fn krun_add_net_tap(
+        ctx_id: u32,
+        c_tap_name: *const c_char,
+        c_mac: *const u8,
+        features: u32,
+        flags: u32,
+    ) -> i32;
     fn krun_start_enter(ctx_id: u32) -> i32;
 }
 
@@ -172,6 +183,23 @@ impl Ctx {
         check(
             unsafe { krun_add_vsock(self.0, tsi_features) },
             "krun_add_vsock",
+        )
+    }
+
+    pub fn add_net_tap(&self, tap: &str, mac: &[u8; 6]) -> Result<()> {
+        let c_tap = cstr(tap)?;
+        // SAFETY: both pointers outlive the call.
+        check(
+            unsafe {
+                krun_add_net_tap(
+                    self.0,
+                    c_tap.as_ptr(),
+                    mac.as_ptr(),
+                    COMPAT_NET_FEATURES,
+                    NET_FLAG_DHCP_CLIENT,
+                )
+            },
+            "krun_add_net_tap",
         )
     }
 
