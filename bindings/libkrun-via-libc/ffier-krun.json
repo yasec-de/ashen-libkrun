@@ -2006,6 +2006,24 @@
           "ffi_name": "krun_vmm_builder_transparent_huge_pages"
         },
         {
+          "name": "mark_memaction_secret",
+          "doc": [
+            " Mark guest memory as holding secrets on hosts running the ashen",
+            " crash-memaction patchset."
+          ],
+          "receiver": "value",
+          "params": [],
+          "ret": {
+            "return_kind": "result",
+            "ok": {
+              "type": "Self"
+            },
+            "err_type": "VmmError",
+            "c_convention": "out_param"
+          },
+          "ffi_name": "krun_vmm_builder_mark_memaction_secret"
+        },
+        {
           "name": "acpi",
           "doc": [
             " Enable ACPI table generation for x86_64 guests.",

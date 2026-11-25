@@ -37,6 +37,7 @@ pub struct VmmBuilder<'a> {
     invariant_tsc: bool,
     split_irqchip: bool,
     transparent_huge_pages: bool,
+    memaction_secret: bool,
     acpi: bool,
     smbios_oem_strings: Vec<String>,
     shutdown_support: bool,
@@ -174,6 +175,16 @@ impl<'a> VmmBuilder<'a> {
             return Err(VmmError::InvalidParam());
         }
         self.transparent_huge_pages = enabled;
+        Ok(self)
+    }
+
+    /// Mark guest memory as holding secrets on hosts running the ashen
+    /// crash-memaction patchset.
+    pub fn mark_memaction_secret(mut self) -> Result<Self, VmmError> {
+        if !cfg!(target_os = "linux") {
+            return Err(VmmError::InvalidParam());
+        }
+        self.memaction_secret = true;
         Ok(self)
     }
 
@@ -508,9 +519,12 @@ fn build_vm(builder_cfg: VmmBuilder<'_>) -> Result<Vmm<'_>, VmmError> {
     #[cfg(target_os = "linux")]
     {
         vm_resources.transparent_huge_pages = builder_cfg.transparent_huge_pages;
+        vm_resources.memaction_secret = builder_cfg.memaction_secret;
     }
     #[cfg(not(target_os = "linux"))]
     let _ = builder_cfg.transparent_huge_pages;
+    #[cfg(not(target_os = "linux"))]
+    let _ = builder_cfg.memaction_secret;
     vm_resources.acpi_enabled = builder_cfg.acpi;
     if !builder_cfg.smbios_oem_strings.is_empty() {
         vm_resources.smbios_oem_strings = Some(builder_cfg.smbios_oem_strings);

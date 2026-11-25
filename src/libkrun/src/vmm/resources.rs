@@ -123,6 +123,9 @@ pub struct VmResources {
     /// Whether to ask for transparent huge pages for guest memory (Linux).
     #[cfg(target_os = "linux")]
     pub transparent_huge_pages: bool,
+    /// Whether to mark guest memory as secret for a host kernel with ashen's crash-memaction patchset
+    #[cfg(target_os = "linux")]
+    pub memaction_secret: bool,
     /// Whether to expose ACPI tables (x86_64). When disabled, virtio-mmio devices are
     /// discovered via the kernel command line and SMP uses the MP table.
     pub acpi_enabled: bool,
@@ -281,6 +284,8 @@ mod tests {
             split_irqchip: false,
             #[cfg(target_os = "linux")]
             transparent_huge_pages: false,
+            #[cfg(target_os = "linux")]
+            memaction_secret: false,
             acpi_enabled: false,
             serial_consoles: Vec::new(),
             kernel_console: None,

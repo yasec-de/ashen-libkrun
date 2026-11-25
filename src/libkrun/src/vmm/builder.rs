@@ -868,6 +868,11 @@ pub fn build_microvm(
         fw_range_for_mem,
     )?;
 
+    #[cfg(target_os = "linux")]
+    if vm_resources.memaction_secret {
+        mark_memaction_secret(&guest_memory);
+    }
+
     let vcpu_config = vm_resources.vcpu_config();
 
     // Clone the command-line so that a failed boot doesn't pollute the original.
@@ -2082,6 +2087,31 @@ fn map_ram_in_blocks(
                 RECLAIM_BLOCK_SIZE >> 20
             );
             false
+        }
+    }
+}
+
+/// `MADV_CRASH_SECRET` from the crash-memaction kernel patchset in `include/uapi/asm-generic/mman-common.h`.
+#[cfg(target_os = "linux")]
+const MADV_CRASH_SECRET: i32 = 26;
+
+#[cfg(target_os = "linux")]
+fn mark_memaction_secret(guest_mem: &GuestMemoryMmap) {
+    for region in guest_mem.iter() {
+        // SAFETY: this only sets a VMA flag, which will not affect runtime behavior outside of
+        // kernel panics.
+        let ret = unsafe {
+            libc::madvise(
+                region.as_ptr().cast(),
+                region.len() as usize,
+                MADV_CRASH_SECRET,
+            )
+        };
+        if ret != 0 {
+            warn!(
+                "failed to mark guest memory as secret: {}",
+                io::Error::last_os_error()
+            );
         }
     }
 }

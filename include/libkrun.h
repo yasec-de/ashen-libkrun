@@ -591,6 +591,12 @@ typedef KrunResult (*krun_vmm_builder_split_irqchip_fn)(KrunVmmBuilder* handle, 
 KrunResult krun_vmm_builder_transparent_huge_pages(KrunVmmBuilder* handle, bool enabled, KrunError* err_out);
 typedef KrunResult (*krun_vmm_builder_transparent_huge_pages_fn)(KrunVmmBuilder* handle, bool enabled, KrunError* err_out);
 /**
+ * Mark guest memory as holding secrets on hosts running the ashen
+ * crash-memaction patchset.
+ */
+KrunResult krun_vmm_builder_mark_memaction_secret(KrunVmmBuilder* handle, KrunError* err_out);
+typedef KrunResult (*krun_vmm_builder_mark_memaction_secret_fn)(KrunVmmBuilder* handle, KrunError* err_out);
+/**
  * Enable ACPI table generation for x86_64 guests.
  *
  * When disabled (the default), virtio-mmio devices are passed on the kernel
