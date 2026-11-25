@@ -199,6 +199,8 @@ pub struct VmResources {
     /// How the balloon gives the memory of free page reports back to the host.
     #[cfg(not(feature = "tee"))]
     pub balloon_free_page_reporting_mode: FreePageReportingMode,
+    /// Whether to mark guest memory as secret for a host kernel with ashen's crash-memaction patchset
+    pub memaction_secret: bool,
 }
 
 impl VmResources {
@@ -456,6 +458,7 @@ mod tests {
             dhcp_client: false,
             #[cfg(not(feature = "tee"))]
             balloon_free_page_reporting_mode: FreePageReportingMode::Default,
+            memaction_secret: false,
         }
     }
 

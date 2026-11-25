@@ -1101,6 +1101,26 @@ int32_t krun_check_nested_virt(void);
  */
 int32_t krun_set_balloon_free_page_reporting_mode(uint32_t ctx_id, uint32_t mode);
 
+/**
+ * Mark guest memory as holding secrets on a host kernel running the ashen
+ * crash-memaction patchset.
+ *
+ * `madvise`s `MADV_CRASH_SECRET` on guest memory before the vCPUs are started.
+ * The flag makes the patched kernel wipe this VM's memory earlier during a
+ * tamper alarm. Only supported on Linux with the ashen crash-memaction
+ * patchset.
+ *
+ * This function should be called before "krun_start_enter".
+ *
+ * Arguments:
+ *  "ctx_id" - the configuration context ID.
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure. Fails with -EINVAL on
+ *  hosts other than Linux.
+ */
+int32_t krun_mark_memaction_secret(uint32_t ctx_id);
+
 /* Feature constants for krun_has_feature() */
 #define KRUN_FEATURE_NET 0
 #define KRUN_FEATURE_BLK 1

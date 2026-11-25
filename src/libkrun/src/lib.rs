@@ -1961,6 +1961,23 @@ pub unsafe extern "C" fn krun_set_nested_virt(ctx_id: u32, enabled: bool) -> i32
 }
 
 #[allow(clippy::missing_safety_doc)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn krun_mark_memaction_secret(ctx_id: u32) -> i32 {
+    if !cfg!(target_os = "linux") {
+        return -libc::EINVAL;
+    }
+
+    match CTX_MAP.lock().unwrap().entry(ctx_id) {
+        Entry::Occupied(mut ctx_cfg) => {
+            let cfg = ctx_cfg.get_mut();
+            cfg.vmr.memaction_secret = true;
+            KRUN_SUCCESS
+        }
+        Entry::Vacant(_) => -libc::ENOENT,
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
 pub unsafe extern "C" fn krun_set_reset_exit_code(ctx_id: u32, code: u8) -> i32 {
     match CTX_MAP.lock().unwrap().entry(ctx_id) {
